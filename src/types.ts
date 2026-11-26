@@ -14,7 +14,7 @@ export interface InterceptorManager {
   clear(): void;
 }
 
-export interface LuchRequestConfig<D = any, P = any> {
+export interface TsaRequestConfig<D = any, P = any> {
   url?: string;
   method?: string;
   baseURL?: string;
@@ -31,23 +31,23 @@ export interface LuchRequestConfig<D = any, P = any> {
   onTask?: (task: any, control: { abort(reason?: unknown): void }) => void;
   onProgress?: (event: ProgressEvent) => void;
   nativeOptions?: Record<string, any>;
-  luchMeta?: Record<string, any>;
-  luchOptions?: {
+  tsaMeta?: Record<string, any>;
+  tsaOptions?: {
     jsonParsing?: false | { mode?: 'auto' | 'strict'; include?: string[]; [key: string]: any };
     [key: string]: any;
   };
   elem?: any;
   id?: string | number;
   immediate?: boolean;
-  request?: LuchRequestConfig;
+  request?: TsaRequestConfig;
   [key: string]: any;
 }
 
-export interface LuchResponse<T = any> {
+export interface TsaResponse<T = any> {
   data: T;
   statusCode: number;
   header: Record<string, string>;
-  config: LuchRequestConfig;
+  config: TsaRequestConfig;
   task?: any;
   raw: any;
   responseURL?: string;
@@ -58,7 +58,7 @@ export interface LuchResponse<T = any> {
   [key: string]: any;
 }
 
-export interface LuchRequestPromise<T> extends Promise<T> {
+export interface TsaRequestPromise<T> extends Promise<T> {
   task?: any;
   abort(reason?: unknown): this;
   onTask(
@@ -66,37 +66,37 @@ export interface LuchRequestPromise<T> extends Promise<T> {
   ): () => void;
 }
 
-export interface LuchRequestInstance {
-  request<T = any>(config: LuchRequestConfig): LuchRequestPromise<LuchResponse<T>>;
-  get<T = any>(url: string, config?: LuchRequestConfig): LuchRequestPromise<LuchResponse<T>>;
-  delete<T = any>(url: string, config?: LuchRequestConfig): LuchRequestPromise<LuchResponse<T>>;
-  head<T = any>(url: string, config?: LuchRequestConfig): LuchRequestPromise<LuchResponse<T>>;
-  options<T = any>(url: string, config?: LuchRequestConfig): LuchRequestPromise<LuchResponse<T>>;
-  post<T = any, D = any>(url: string, data?: D, config?: LuchRequestConfig<D>): LuchRequestPromise<LuchResponse<T>>;
-  put<T = any, D = any>(url: string, data?: D, config?: LuchRequestConfig<D>): LuchRequestPromise<LuchResponse<T>>;
-  patch<T = any, D = any>(url: string, data?: D, config?: LuchRequestConfig<D>): LuchRequestPromise<LuchResponse<T>>;
-  upload<T = any>(config: LuchRequestConfig): LuchRequestPromise<LuchResponse<T | string>>;
-  download(config: LuchRequestConfig): LuchRequestPromise<LuchResponse<any>>;
-  setConfig(config: LuchRequestConfig): this;
+export interface TsaRequestInstance {
+  request<T = any>(config: TsaRequestConfig): TsaRequestPromise<TsaResponse<T>>;
+  get<T = any>(url: string, config?: TsaRequestConfig): TsaRequestPromise<TsaResponse<T>>;
+  delete<T = any>(url: string, config?: TsaRequestConfig): TsaRequestPromise<TsaResponse<T>>;
+  head<T = any>(url: string, config?: TsaRequestConfig): TsaRequestPromise<TsaResponse<T>>;
+  options<T = any>(url: string, config?: TsaRequestConfig): TsaRequestPromise<TsaResponse<T>>;
+  post<T = any, D = any>(url: string, data?: D, config?: TsaRequestConfig<D>): TsaRequestPromise<TsaResponse<T>>;
+  put<T = any, D = any>(url: string, data?: D, config?: TsaRequestConfig<D>): TsaRequestPromise<TsaResponse<T>>;
+  patch<T = any, D = any>(url: string, data?: D, config?: TsaRequestConfig<D>): TsaRequestPromise<TsaResponse<T>>;
+  upload<T = any>(config: TsaRequestConfig): TsaRequestPromise<TsaResponse<T | string>>;
+  download(config: TsaRequestConfig): TsaRequestPromise<TsaResponse<any>>;
+  setConfig(config: TsaRequestConfig): this;
   abortAll(): this;
   interceptors: { request: InterceptorManager; response: InterceptorManager };
 }
 
-export interface RequestComponent extends LuchRequestInstance {
-  create(defaults?: LuchRequestConfig): LuchRequestInstance;
-  render(options?: LuchRequestConfig): LuchRequestInstance;
-  set(options: LuchRequestConfig): this;
-  reload(id: string | number, options?: LuchRequestConfig): LuchRequestInstance | undefined;
+export interface RequestComponent extends TsaRequestInstance {
+  create(defaults?: TsaRequestConfig): TsaRequestInstance;
+  render(options?: TsaRequestConfig): TsaRequestInstance;
+  set(options: TsaRequestConfig): this;
+  reload(id: string | number, options?: TsaRequestConfig): TsaRequestInstance | undefined;
   getInst(id: string | number): any;
   removeInst(id: string | number): void;
   on(events: string, callback: (...args: any[]) => any): this;
   Class: any;
   cache: any;
-  config: LuchRequestConfig;
+  config: TsaRequestConfig;
   index: number;
   CONST: Record<string, any>;
-  LuchRequestError: any;
-  isLuchRequestError: (error: unknown) => boolean;
+  TsaRequestError: any;
+  isTsaRequestError: (error: unknown) => boolean;
   CancellationMode: { NATIVE: string; LOGICAL: string };
   ErrorCode: Record<string, string>;
   createCancelSource(): { signal: any; cancel(reason?: unknown): void };

@@ -1,6 +1,6 @@
 import { ERROR } from './constants';
 
-export class LuchRequestError extends Error {
+export class TsaRequestError extends Error {
   static ERR_INVALID_CONFIG: string;
   static ERR_NETWORK: string;
   static ERR_BAD_STATUS: string;
@@ -16,12 +16,12 @@ export class LuchRequestError extends Error {
   raw?: any;
   cancelMode?: string;
   statusCode?: number;
-  __luchRequestError: boolean;
+  __tsaRequestError: boolean;
 
   constructor(message?: string, code?: string, context: any = {}) {
     super(message || '');
 
-    this.name = 'LuchRequestError';
+    this.name = 'TsaRequestError';
     this.message = message || '';
     this.code = code || ERROR.ERR_INTERCEPTOR;
     this.config = context.config;
@@ -31,10 +31,10 @@ export class LuchRequestError extends Error {
     this.raw = context.raw;
     this.cancelMode = context.cancelMode;
     this.statusCode = context.statusCode;
-    this.__luchRequestError = true;
+    this.__tsaRequestError = true;
     this.stack = new Error(this.message).stack;
 
-    Object.setPrototypeOf(this, LuchRequestError.prototype);
+    Object.setPrototypeOf(this, TsaRequestError.prototype);
   }
 
   toJSON() {
@@ -48,18 +48,18 @@ export class LuchRequestError extends Error {
       cause: this.cause,
       raw: this.raw,
       cancelMode: this.cancelMode,
-      isLuchRequestError: true
+      isTsaRequestError: true
     };
   }
 }
 
-LuchRequestError.ERR_INVALID_CONFIG = ERROR.ERR_INVALID_CONFIG;
-LuchRequestError.ERR_NETWORK = ERROR.ERR_NETWORK;
-LuchRequestError.ERR_BAD_STATUS = ERROR.ERR_BAD_STATUS;
-LuchRequestError.ERR_BAD_RESPONSE = ERROR.ERR_BAD_RESPONSE;
-LuchRequestError.ERR_CANCELED = ERROR.ERR_CANCELED;
-LuchRequestError.ERR_INTERCEPTOR = ERROR.ERR_INTERCEPTOR;
+TsaRequestError.ERR_INVALID_CONFIG = ERROR.ERR_INVALID_CONFIG;
+TsaRequestError.ERR_NETWORK = ERROR.ERR_NETWORK;
+TsaRequestError.ERR_BAD_STATUS = ERROR.ERR_BAD_STATUS;
+TsaRequestError.ERR_BAD_RESPONSE = ERROR.ERR_BAD_RESPONSE;
+TsaRequestError.ERR_CANCELED = ERROR.ERR_CANCELED;
+TsaRequestError.ERR_INTERCEPTOR = ERROR.ERR_INTERCEPTOR;
 
-export function isLuchRequestError(error: any): error is LuchRequestError {
-  return !!(error && error.__luchRequestError === true && error.name === 'LuchRequestError');
+export function isTsaRequestError(error: any): error is TsaRequestError {
+  return !!(error && error.__tsaRequestError === true && error.name === 'TsaRequestError');
 }

@@ -1,6 +1,6 @@
 import { $ } from './layui';
 import { ERROR, CANCELLATION_MODE, PROTECTED_NATIVE_KEYS } from './constants';
-import { LuchRequestError, isLuchRequestError } from './error';
+import { TsaRequestError, isTsaRequestError } from './error';
 import { createInterceptorManager, runInterceptorChain } from './interceptor';
 import {
   isPlainObject,
@@ -42,8 +42,8 @@ function debugLog(
   if (typeof console.log === 'function') console.log(prefix, payload);
 }
 
-function canceledError(context: any, reason?: any): LuchRequestError {
-  return new LuchRequestError(reason ? String(reason) : '请求已取消', ERROR.ERR_CANCELED, {
+function canceledError(context: any, reason?: any): TsaRequestError {
+  return new TsaRequestError(reason ? String(reason) : '请求已取消', ERROR.ERR_CANCELED, {
     config: context.config,
     task: context.task,
     cancelMode: CANCELLATION_MODE.LOGICAL,
@@ -51,10 +51,10 @@ function canceledError(context: any, reason?: any): LuchRequestError {
   });
 }
 
-function normalizeError(error: any, context: any): LuchRequestError {
-  if (isLuchRequestError(error)) return error;
+function normalizeError(error: any, context: any): TsaRequestError {
+  if (isTsaRequestError(error)) return error;
 
-  return new LuchRequestError(
+  return new TsaRequestError(
     error && error.message ? error.message : '请求处理失败',
     ERROR.ERR_INTERCEPTOR,
     {
@@ -64,6 +64,19 @@ function normalizeError(error: any, context: any): LuchRequestError {
       raw: error
     }
   );
+}
+
+function runResponseErrorChain(manager: any, error: any, context: any): Promise<any> {
+  let chain: Promise<any> = Promise.reject(error);
+
+  $.each(manager._handlers(), function (_: number, item: any) {
+    chain = chain.then(undefined, function (currentError: any) {
+      if (typeof item.onRejected !== 'function') throw currentError;
+      return item.onRejected.call(undefined, currentError);
+    });
+  });
+
+  return chain;
 }
 
 function addTaskListener(context: any, listener: any): () => void {
@@ -117,7 +130,7 @@ function buildRequestBody(conf: any, operation: string): any {
 
   if (operation === 'upload') {
     if (typeof FormData === 'undefined') {
-      throw new LuchRequestError('当前环境不支持 FormData', ERROR.ERR_INVALID_CONFIG, { config: conf });
+      throw new TsaRequestError('当前环境不支持 FormData', ERROR.ERR_INVALID_CONFIG, { config: conf });
     }
 
     let formData: any;
@@ -187,7 +200,7 @@ function buildResponse(conf: any, xhr: any, context: any, operation: string): an
   if (operation !== 'download') {
     data = parseData(
       rawData,
-      conf.luchOptions && conf.luchOptions.jsonParsing,
+      conf.tsaOptions && conf.tsaOptions.jsonParsing,
       operation
     );
   }
@@ -232,7 +245,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
     try {
       xhr = new XMLHttpRequest();
     } catch (e) {
-      reject(new LuchRequestError('无法创建 XMLHttpRequest', ERROR.ERR_INVALID_CONFIG, {
+      reject(new TsaRequestError('无法创建 XMLHttpRequest', ERROR.ERR_INVALID_CONFIG, {
         config: conf,
         cause: e
       }));
@@ -248,7 +261,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
     try {
       xhr.open(method, conf.fullURL, true);
     } catch (e) {
-      reject(new LuchRequestError('请求地址或方法无效', ERROR.ERR_INVALID_CONFIG, {
+      reject(new TsaRequestError('请求地址或方法无效', ERROR.ERR_INVALID_CONFIG, {
         config: conf,
         cause: e,
         task: xhr
@@ -270,9 +283,9 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
     try {
       body = buildRequestBody(conf, operation);
     } catch (e) {
-      reject(isLuchRequestError(e)
+      reject(isTsaRequestError(e)
         ? e
-        : new LuchRequestError((e as Error).message, ERROR.ERR_INVALID_CONFIG, {
+        : new TsaRequestError((e as Error).message, ERROR.ERR_INVALID_CONFIG, {
           config: conf,
           cause: e,
           task: xhr
@@ -310,7 +323,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
         if (validate(response.statusCode)) {
           resolve(response);
         } else {
-          reject(new LuchRequestError('请求状态异常: ' + response.statusCode, ERROR.ERR_BAD_STATUS, {
+          reject(new TsaRequestError('请求状态异常: ' + response.statusCode, ERROR.ERR_BAD_STATUS, {
             config: conf,
             task: xhr,
             response: response,
@@ -319,9 +332,9 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
           }));
         }
       } catch (e) {
-        reject(isLuchRequestError(e)
+        reject(isTsaRequestError(e)
           ? e
-          : new LuchRequestError((e as Error).message || '响应处理失败', ERROR.ERR_BAD_RESPONSE, {
+          : new TsaRequestError((e as Error).message || '响应处理失败', ERROR.ERR_BAD_RESPONSE, {
             config: conf,
             task: xhr,
             cause: e,
@@ -332,7 +345,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
 
     xhr.onerror = function () {
       if (context.canceled) return;
-      reject(new LuchRequestError('网络请求失败', ERROR.ERR_NETWORK, {
+      reject(new TsaRequestError('网络请求失败', ERROR.ERR_NETWORK, {
         config: conf,
         task: xhr,
         raw: { errMsg: 'request:fail', status: xhr.status }
@@ -341,7 +354,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
 
     xhr.ontimeout = function () {
       if (context.canceled) return;
-      reject(new LuchRequestError('请求超时', ERROR.ERR_NETWORK, {
+      reject(new TsaRequestError('请求超时', ERROR.ERR_NETWORK, {
         config: conf,
         task: xhr,
         raw: { errMsg: 'request:timeout' }
@@ -350,7 +363,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
 
     xhr.onabort = function () {
       if (context.canceled) return;
-      reject(new LuchRequestError('请求被中断', ERROR.ERR_CANCELED, {
+      reject(new TsaRequestError('请求被中断', ERROR.ERR_CANCELED, {
         config: conf,
         task: xhr,
         cancelMode: CANCELLATION_MODE.LOGICAL
@@ -360,7 +373,7 @@ function dispatch(conf: any, context: any, operation: string): Promise<any> {
     try {
       xhr.send(body);
     } catch (e) {
-      reject(new LuchRequestError('请求发送失败', ERROR.ERR_INVALID_CONFIG, {
+      reject(new TsaRequestError('请求发送失败', ERROR.ERR_INVALID_CONFIG, {
         config: conf,
         task: xhr,
         cause: e
@@ -418,7 +431,7 @@ export function executeRequest(
     if (typeof context.removeSignal === 'function') context.removeSignal();
     if (typeof context.cleanupPending === 'function') context.cleanupPending();
 
-    rejectOuter!(new LuchRequestError(reason ? String(reason) : '请求已取消', ERROR.ERR_CANCELED, {
+    rejectOuter!(new TsaRequestError(reason ? String(reason) : '请求已取消', ERROR.ERR_CANCELED, {
       config: context.config,
       task: context.task,
       cancelMode: mode,
@@ -455,7 +468,7 @@ export function executeRequest(
 
   if (!config.url) {
     context.cleanupPending();
-    rejectOuter!(new LuchRequestError('缺少请求地址 url', ERROR.ERR_INVALID_CONFIG, {
+    rejectOuter!(new TsaRequestError('缺少请求地址 url', ERROR.ERR_INVALID_CONFIG, {
       config: config
     }));
     return promise;
@@ -513,6 +526,8 @@ export function executeRequest(
 
       return dispatch(finalConfig, context, operation).then(function (response) {
         return runInterceptorChain(client.interceptors.response, response, context, false);
+      }, function (error) {
+        return runResponseErrorChain(client.interceptors.response, error, context);
       });
     })
     .then(function (response) {

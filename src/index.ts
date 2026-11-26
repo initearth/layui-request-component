@@ -1,6 +1,6 @@
 import { $, layuiGlobal } from './layui';
 import { ERROR, CANCELLATION_MODE, METHODS } from './constants';
-import { LuchRequestError, isLuchRequestError } from './error';
+import { TsaRequestError, isTsaRequestError } from './error';
 import { createCancelSource } from './cancel';
 import { interceptorProxy } from './interceptor';
 import { createClient } from './client';
@@ -38,7 +38,7 @@ layuiGlobal.define(['component', 'jquery'], function (exportModule: any) {
       validateStatus: function (status: number) {
         return status >= 200 && status < 300;
       },
-      luchOptions: {
+      tsaOptions: {
         jsonParsing: { mode: 'auto' }
       }
     },
@@ -138,8 +138,8 @@ layuiGlobal.define(['component', 'jquery'], function (exportModule: any) {
       request: interceptorProxy(getDefaultClient, 'request'),
       response: interceptorProxy(getDefaultClient, 'response')
     },
-    LuchRequestError: LuchRequestError,
-    isLuchRequestError: isLuchRequestError,
+    TsaRequestError: TsaRequestError,
+    isTsaRequestError: isTsaRequestError,
     CancellationMode: CANCELLATION_MODE,
     ErrorCode: ERROR,
     createCancelSource: createCancelSource
@@ -158,10 +158,10 @@ layuiGlobal.define(['component', 'jquery'], function (exportModule: any) {
 export type {
   InterceptorContext,
   InterceptorManager,
-  LuchRequestConfig,
-  LuchResponse,
-  LuchRequestPromise,
-  LuchRequestInstance,
+  TsaRequestConfig,
+  TsaResponse,
+  TsaRequestPromise,
+  TsaRequestInstance,
   RequestComponent
 } from './types';
 

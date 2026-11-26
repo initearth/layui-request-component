@@ -1,0 +1,13 @@
+{
+  "code": 0,
+  "message": "login success",
+  "data": {
+    "token": "mock-token-9f3c2a7b",
+    "expiresIn": 7200,
+    "user": {
+      "id": 1,
+      "name": "Ada Lovelace",
+      "role": "admin"
+    }
+  }
+}

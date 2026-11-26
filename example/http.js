@@ -37,11 +37,37 @@ layui.define(['request', 'appConfig'], function (exports) {
     return http;
   }
 
+  function setInvalidToken() {
+    return setToken('invalid-token');
+  }
+
+  function payloadOf(response) {
+    return response && response.data && response.data.data
+      ? response.data.data
+      : response && response.data;
+  }
+
   var http = request.create({
     baseURL: api.baseURL || '',
     timeout: api.timeout || 0,
     debug: appConfig.debug === true
   });
+
+  http.login = function (data) {
+    return http.request({
+      method: 'POST',
+      url: '/login.json',
+      data: data || { username: 'admin', password: '123456' }
+    });
+  };
+
+  http.checkAuth = function () {
+    return http.request({ method: 'GET', url: '/me' });
+  };
+
+  http.checkForbidden = function () {
+    return http.request({ method: 'GET', url: '/forbidden' });
+  };
 
   http.interceptors.request.use(function (config) {
     var token = getToken();
@@ -58,10 +84,61 @@ layui.define(['request', 'appConfig'], function (exports) {
     return config;
   });
 
+  http.interceptors.response.use(function (response) {
+    return response;
+  }, function (error) {
+    var status = error.response && error.response.statusCode;
+    var payload = error.response && error.response.data;
+    var code = payload && payload.code;
+    var config = error.config || {};
+    var url = config.url || '';
+
+    if (url.indexOf('/login.json') > -1) {
+      throw error;
+    }
+
+    if (status === 401 || code === 401) {
+      console.log('[layui-request] auth intercepted: 401', {
+        url: url,
+        status: status,
+        code: code
+      });
+
+      removeToken();
+
+      if (config._authRetried) {
+        throw error;
+      }
+
+      config._authRetried = true;
+
+      return http.login().then(function (response) {
+        var payload = payloadOf(response);
+        if (payload && payload.token) setToken(payload.token);
+        return http.request(config);
+      });
+    }
+
+    if (status === 403 || code === 403) {
+      console.log('[layui-request] auth intercepted: 403', {
+        url: url,
+        status: status,
+        code: code
+      });
+
+      removeToken();
+      throw error;
+    }
+
+    throw error;
+  });
+
   http.config = appConfig;
   http.setToken = setToken;
   http.getToken = getToken;
   http.removeToken = removeToken;
+  http.setInvalidToken = setInvalidToken;
+  http.payloadOf = payloadOf;
   http.setAuthorization = setToken;
   http.getAuthorization = getToken;
   http.removeAuthorization = removeToken;

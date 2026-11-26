@@ -45,6 +45,35 @@ export function startServer(options = {}) {
       return;
     }
 
+    if (pathname === '/example/mock/me') {
+      const authorization = req.headers.authorization || null;
+      const valid = authorization === 'Bearer mock-token-9f3c2a7b';
+
+      const body = JSON.stringify({
+        code: valid ? 0 : 401,
+        message: valid ? 'ok' : (authorization ? 'invalid token' : 'missing token'),
+        data: {
+          authorization: authorization,
+          injected: !!authorization,
+          valid: valid
+        }
+      });
+
+      res.writeHead(valid ? 200 : 401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(body);
+      return;
+    }
+
+    if (pathname === '/example/mock/forbidden') {
+      res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        code: 403,
+        message: 'forbidden',
+        data: { valid: false }
+      }));
+      return;
+    }
+
     const relativePath = pathname.replace(/^[/\\]+/, '');
     let filePath = resolve(join(root, normalize(relativePath)));
 

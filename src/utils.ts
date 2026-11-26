@@ -1,6 +1,6 @@
 import { $ } from './layui';
 import { ERROR, NO_DEEP_KEYS } from './constants';
-import { LuchRequestError } from './error';
+import { TsaRequestError } from './error';
 
 export function isPlainObject(value: any): boolean {
   return !!value &&
@@ -42,7 +42,7 @@ export function mergeHeaders(base: any, incoming: any): Record<string, any> {
   return output;
 }
 
-export function mergeLuchOptions(base: any, incoming: any): Record<string, any> {
+export function mergeTsaOptions(base: any, incoming: any): Record<string, any> {
   const output: Record<string, any> = isPlainObject(base) ? copyValue(base) : {};
 
   $.each(incoming || {}, function (key: string, value: any) {
@@ -77,12 +77,12 @@ export function mergeConfig(...args: any[]): Record<string, any> {
 
       if (key === 'header') {
         result.header = mergeHeaders(result.header, value);
-      } else if (key === 'luchMeta') {
-        result.luchMeta = (isPlainObject(result.luchMeta) && isPlainObject(value))
-          ? $.extend({}, result.luchMeta, value)
+      } else if (key === 'tsaMeta') {
+        result.tsaMeta = (isPlainObject(result.tsaMeta) && isPlainObject(value))
+          ? $.extend({}, result.tsaMeta, value)
           : copyValue(value);
-      } else if (key === 'luchOptions') {
-        result.luchOptions = mergeLuchOptions(result.luchOptions || {}, value);
+      } else if (key === 'tsaOptions') {
+        result.tsaOptions = mergeTsaOptions(result.tsaOptions || {}, value);
       } else if (key === 'nativeOptions' && isPlainObject(result[key]) && isPlainObject(value)) {
         result[key] = $.extend({}, result[key], value);
       } else if (NO_DEEP_KEYS[key]) {
@@ -183,7 +183,7 @@ export function parseData(text: any, jsonParsing: any, operation: string): any {
     return JSON.parse(text);
   } catch (e) {
     if (mode === 'strict') {
-      throw new LuchRequestError('响应不是有效的 JSON', ERROR.ERR_BAD_RESPONSE, {
+      throw new TsaRequestError('响应不是有效的 JSON', ERROR.ERR_BAD_RESPONSE, {
         raw: text,
         cause: e
       });

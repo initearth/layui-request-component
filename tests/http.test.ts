@@ -82,6 +82,13 @@ describe('example http wrapper', function () {
                   requestStub.onRequest = handler;
                   return 1;
                 }
+              },
+              response: {
+                use: function (onFulfilled: any, onRejected: any) {
+                  requestStub.onResponse = onFulfilled;
+                  requestStub.onResponseError = onRejected;
+                  return 2;
+                }
               }
             }
           };
@@ -108,6 +115,7 @@ describe('example http wrapper', function () {
 
     expect(requestStub.defaults.baseURL).toBe('https://env.test');
     expect(requestStub.defaults.timeout).toBe(2500);
+    expect(typeof requestStub.onResponseError).toBe('function');
 
     http.setToken('abc');
     expect(http.getToken()).toBe('Bearer abc');

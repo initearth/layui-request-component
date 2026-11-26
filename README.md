@@ -91,8 +91,8 @@ var http = request.render(defaults);
 | `signal` | 取消信号，配合 `request.createCancelSource()` 使用 |
 | `onTask` | 原生 `XMLHttpRequest` 就绪回调，参数为 `(xhr, control)` |
 | `nativeOptions` | 透传到原生 `XMLHttpRequest` 的浏览器专有字段，如 `xhrFields` |
-| `luchMeta` | 业务元数据，不发送到服务端 |
-| `luchOptions.jsonParsing` | 响应 JSON 解析：`{ mode: 'auto'\|'strict', include: ['upload'] }` 或 `false` |
+| `tsaMeta` | 业务元数据，不发送到服务端 |
+| `tsaOptions.jsonParsing` | 响应 JSON 解析：`{ mode: 'auto'\|'strict', include: ['upload'] }` 或 `false` |
 | `debug` | 是否输出调试日志，默认 `false` |
 
 配置优先级：内置默认值 → `request.set()` 全局配置 → 实例默认配置 → 单次请求配置。`header` 按名称大小写不敏感合并，`params`、`data`、`formData`、`files` 等整体覆盖。
@@ -174,8 +174,8 @@ http.download({ url: '/report.pdf' }).then(function (response) {
 ### 错误处理与常量
 
 ```js
-request.isLuchRequestError(error);
-request.LuchRequestError.ERR_CANCELED;
+request.isTsaRequestError(error);
+request.TsaRequestError.ERR_CANCELED;
 request.ErrorCode.ERR_BAD_STATUS;
 request.CancellationMode.NATIVE;
 ```
@@ -210,6 +210,8 @@ npm 包中提供了可直接复制的模板：
 node_modules/@initearth/layui-request-component/example/appConfig.js
 node_modules/@initearth/layui-request-component/example/http.js
 node_modules/@initearth/layui-request-component/example/debug.html
+node_modules/@initearth/layui-request-component/example/theme/
+node_modules/@initearth/layui-request-component/example/mock/
 ```
 
 将它们和 `dist/request.js` 一起放到 layui 扩展目录，并保持文件名不变：
@@ -219,10 +221,28 @@ static/layui/exts/
 ├── request.js
 ├── appConfig.js
 ├── http.js
-└── debug.html
+├── debug.html
+├── theme/
+└── mock/
 ```
 
-其中 `debug.html` 是可视化调试页面，默认开启 `debug: true`。本地调试时执行：
+其中 `debug.html` 是鉴权调试页面，默认开启 `debug: true`，提供以下操作：
+
+- **登录**：请求 `POST /login.json`，自动保存 Token 到 `layui.data` 并回填输入框
+- **设置错误 Token**：写入一个无效 Token，用于触发鉴权失败
+- **请求鉴权**：请求 `GET /me`，校验当前 Token 是否有效
+- **401 自动拦截**：设置错误 Token 后请求 `/me`；响应拦截器会清除失效 Token、自动重新登录、保存新 Token 并重试原请求
+- **403 拦截**：请求 `/forbidden`；响应拦截器会清除 Token 并终止请求
+- **清除**：删除 `layui.data` 中的 Token，并清空输入框
+
+鉴权拦截逻辑封装在 `example/http.js` 的响应拦截器中：
+
+- `401`：清除 Token → 重新登录 → 保存新 Token → 重试一次原请求，通过 `_authRetried` 防止无限重试
+- `403`：清除 Token → 抛出错误，不做自动重试
+
+页面只保留 Token 只读输入框、鉴权操作按钮、响应结果和调试日志，不再提供请求地址、方法、超时、参数等手动配置项。
+
+本地调试时执行：
 
 ```bash
 npm run watch
@@ -233,12 +253,10 @@ npm run watch
 `watch` 模式会监听 `src/`、`example/` 和构建配置：
 
 - 修改 `src/**/*.ts` 或构建配置：自动重新构建并刷新浏览器
-- 修改 `example/**` 下的 HTML/JS：直接刷新浏览器
+- 修改 `example/**` 下的 HTML/CSS/JS：直接刷新浏览器
 - 页面通过 Server-Sent Events 接收刷新指令，无需手动刷新
 
 如果只需要静态预览而不自动重建，可使用 `npm run dev`。部署到业务项目时，请将 `dist/request.js` 也复制到同一扩展目录。
-
-页面支持配置请求地址、Token、Query 参数、请求头和请求体，并可查看响应结果、取消请求和调试日志。
 
 页面中统一使用：
 
@@ -288,7 +306,7 @@ layui.config({
 ```text
 src/           TypeScript 源码（常量、错误、工具、拦截器、客户端、模块入口）
 tests/         Vitest 测试
-example/       appConfig.js、http.js 与 debug.html 调试模板
+example/       appConfig.js、http.js、debug.html、theme/ 与 mock/ 调试模板
 scripts/       构建辅助脚本
 dist/          构建产物（request.js 与 .d.ts，发布时生成）
 rollup.config.mjs
