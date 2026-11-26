@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>layui request 调试台</title>
+  <title>JWT 验证调试台</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.13.9/dist/css/layui.css">
   <link rel="stylesheet" href="./theme/debug.css">
@@ -12,34 +12,134 @@
 <div class="app-shell">
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark">LR</div>
+      <div class="brand-mark">JWT</div>
       <div>
-        <h1>layui request 调试台</h1>
-        <p>登录并鉴权，验证 Token 注入</p>
+        <h1>JWT 验证调试台</h1>
+        <p>签发 · 解析 · 过期校验 · 自动刷新 · 鉴权拦截</p>
       </div>
     </div>
-    <span class="pill">Debug On</span>
+    <span id="token-badge" class="pill" data-state="empty">未登录</span>
   </header>
+
+  <section class="panel guide-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-index">?</span>
+        调试说明
+      </div>
+      <span class="flow-hint">按顺序操作，观察响应结果与调试日志</span>
+    </div>
+    <div class="panel-body">
+      <div class="guide-grid">
+        <div class="guide-block">
+          <h3>快速开始</h3>
+          <ol class="guide-steps">
+            <li>点击 <b>登录签发</b>，获取 accessToken（2 分钟有效）与 refreshToken（1 小时有效）</li>
+            <li>点击 <b>请求鉴权 /me</b>，验证请求头 <code>Authorization: Bearer</code> 注入与 JWT 验签</li>
+            <li>点击 <b>过期自动刷新</b>，观察 401 → refresh → 重试的完整链路</li>
+          </ol>
+        </div>
+        <div class="guide-block">
+          <h3>按钮速查</h3>
+          <ul class="guide-list">
+            <li><code>解析 Token</code>：Base64URL 解码 Header / Payload / Signature 三段</li>
+            <li><code>模拟已过期</code>：写入 exp 已过期的 JWT，触发 401 刷新</li>
+            <li><code>模拟签名错误</code>：写入签名非法的 JWT，验证验签失败</li>
+            <li><code>手动刷新</code>：用 refreshToken 换取新的 accessToken</li>
+            <li><code>403 拦截</code>：验证权限错误不清除 Token</li>
+            <li><code>清除</code>：删除 layui.data 中的双 Token</li>
+          </ul>
+        </div>
+      </div>
+      <div class="guide-note">
+        <strong>观察要点：</strong>「响应结果」展示接口原始返回；「调试日志」捕获含 <code>[layui-request]</code> 的拦截器日志；「JWT Payload」区实时展示三段解码内容与 exp 过期时间，顶部倒计时每秒刷新。
+      </div>
+    </div>
+  </section>
 
   <section class="panel">
     <div class="panel-header">
       <div class="panel-title">
         <span class="panel-index">01</span>
-        Token 调试
+        Token 状态
       </div>
+      <span id="token-countdown" class="countdown">--</span>
     </div>
     <div class="panel-body">
-      <label class="field-label" for="token">Token <span class="field-hint">来自 layui.data，只读</span></label>
-      <div class="input-row">
-        <input type="text" id="token" class="layui-input" placeholder="登录后自动显示" readonly>
-        <button type="button" class="layui-btn layui-btn-normal" id="btn-login">登录</button>
-        <button type="button" class="layui-btn btn-secondary" id="btn-invalid-token">设置错误 Token</button>
-        <button type="button" class="layui-btn btn-danger" id="btn-clear-token">清除</button>
+      <div class="token-grid">
+        <div class="token-card">
+          <div class="token-card-head">
+            <span class="token-name">Access Token</span>
+            <span id="access-status" class="token-state" data-state="empty">未登录</span>
+          </div>
+          <div class="token-value" id="access-token">--</div>
+          <div class="token-meta" id="access-meta">登录后显示 JWT 三段结构</div>
+        </div>
+        <div class="token-card">
+          <div class="token-card-head">
+            <span class="token-name">Refresh Token</span>
+            <span id="refresh-status" class="token-state" data-state="empty">未登录</span>
+          </div>
+          <div class="token-value" id="refresh-token">--</div>
+          <div class="token-meta" id="refresh-meta">用于 access token 过期后自动续期</div>
+        </div>
       </div>
-      <div class="input-row auth-actions">
-        <button type="button" class="layui-btn btn-secondary" id="btn-auth">请求鉴权</button>
-        <button type="button" class="layui-btn btn-secondary" id="btn-auth-401">401 自动拦截</button>
+      <div class="input-row actions">
+        <button type="button" class="layui-btn layui-btn-normal" id="btn-login">登录签发</button>
+        <button type="button" class="layui-btn btn-secondary" id="btn-parse">解析 Token</button>
+        <button type="button" class="layui-btn btn-secondary" id="btn-expired">模拟已过期</button>
+        <button type="button" class="layui-btn btn-secondary" id="btn-invalid">模拟签名错误</button>
+        <button type="button" class="layui-btn btn-danger" id="btn-clear">清除</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-index">02</span>
+        验证流程
+      </div>
+      <span class="flow-hint">401 → refresh → 重试</span>
+    </div>
+    <div class="panel-body">
+      <div class="input-row flow-actions">
+        <button type="button" class="layui-btn" id="btn-auth">请求鉴权 /me</button>
+        <button type="button" class="layui-btn btn-secondary" id="btn-auth-401">过期自动刷新</button>
+        <button type="button" class="layui-btn btn-secondary" id="btn-refresh">手动刷新</button>
         <button type="button" class="layui-btn btn-danger" id="btn-auth-403">403 拦截</button>
+      </div>
+      <ol class="flow-steps">
+        <li data-step="sign">登录签发 accessToken / refreshToken</li>
+        <li data-step="inject">请求拦截器注入 <code>Authorization: Bearer &lt;token&gt;</code></li>
+        <li data-step="verify">服务端验证 JWT 签名与 exp 声明</li>
+        <li data-step="refresh">401 时用 refreshToken 换取新 accessToken 并重试</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="panel claims-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-index">03</span>
+        JWT Payload
+      </div>
+      <span id="claims-exp" class="countdown">exp -</span>
+    </div>
+    <div class="panel-body">
+      <div class="jwt-parts">
+        <div class="jwt-part">
+          <span class="part-label">Header</span>
+          <pre id="jwt-header">--</pre>
+        </div>
+        <div class="jwt-part">
+          <span class="part-label">Payload</span>
+          <pre id="jwt-payload">--</pre>
+        </div>
+        <div class="jwt-part">
+          <span class="part-label">Signature</span>
+          <pre id="jwt-signature">--</pre>
+        </div>
       </div>
     </div>
   </section>
@@ -48,7 +148,7 @@
     <section class="panel">
       <div class="panel-header">
         <div class="panel-title">
-          <span class="panel-index">02</span>
+          <span class="panel-index">04</span>
           响应结果
         </div>
         <span id="status" class="status-pill" data-state="idle">状态 -</span>
@@ -61,7 +161,7 @@
     <section class="panel">
       <div class="panel-header">
         <div class="panel-title">
-          <span class="panel-index">03</span>
+          <span class="panel-index">05</span>
           调试日志
         </div>
       </div>

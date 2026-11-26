@@ -16,7 +16,9 @@ layui.define(function (exports) {
     auth: {
       table: 'auth',
       key: 'Authorization',
-      prefix: 'Bearer '
+      prefix: 'Bearer ',
+      accessKey: 'AccessToken',
+      refreshKey: 'RefreshToken'
     }
   };
 

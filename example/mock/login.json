@@ -1,9 +1,11 @@
 {
   "code": 0,
-  "message": "login success",
+  "message": "login success (static example)",
   "data": {
-    "token": "mock-token-9f3c2a7b",
-    "expiresIn": 7200,
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAwMTIwfQ.signature-placeholder",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDAwMzYwMH0.signature-placeholder",
+    "tokenType": "Bearer",
+    "expiresIn": 120,
     "user": {
       "id": 1,
       "name": "Ada Lovelace",

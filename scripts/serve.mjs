@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { signJWT, verifyJWT, bearerOf, ACCESS_TTL, REFRESH_TTL } from './jwt.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -12,6 +13,29 @@ const mime = {
   '.json': 'application/json; charset=utf-8',
   '.map': 'application/json; charset=utf-8'
 };
+
+function bearerFromRequest(req) {
+  return bearerOf(req.headers.authorization || '');
+}
+
+function sendJSON(res, status, body) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(body));
+}
+
+function readBody(req) {
+  return new Promise(function (resolveBody) {
+    let raw = '';
+    req.on('data', function (chunk) { raw += chunk; });
+    req.on('end', function () {
+      try {
+        resolveBody(raw ? JSON.parse(raw) : {});
+      } catch (e) {
+        resolveBody({});
+      }
+    });
+  });
+}
 
 const livereloadScript = `
 <script>
@@ -45,32 +69,87 @@ export function startServer(options = {}) {
       return;
     }
 
+    if (pathname === '/example/mock/login.json' && req.method === 'POST') {
+      const accessToken = signJWT({
+        sub: '1',
+        name: 'Ada Lovelace',
+        role: 'admin',
+        iss: 'layui-request-mock',
+        scope: 'profile:read'
+      }, ACCESS_TTL);
+      const refreshToken = signJWT({ sub: '1', type: 'refresh' }, REFRESH_TTL);
+
+      sendJSON(res, 200, {
+        code: 0,
+        message: 'login success',
+        data: {
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          tokenType: 'Bearer',
+          expiresIn: ACCESS_TTL
+        }
+      });
+      return;
+    }
+
+    if (pathname === '/example/mock/refresh.json' && req.method === 'POST') {
+      const body = await readBody(req);
+      const result = verifyJWT(body.refreshToken);
+
+      if (!result.valid || result.payload.type !== 'refresh') {
+        sendJSON(res, 401, {
+          code: 401,
+          message: 'invalid refresh token',
+          data: { reason: result.reason || 'invalid_type' }
+        });
+        return;
+      }
+
+      const accessToken = signJWT({
+        sub: result.payload.sub,
+        name: 'Ada Lovelace',
+        role: 'admin',
+        iss: 'layui-request-mock',
+        scope: 'profile:read'
+      }, ACCESS_TTL);
+
+      sendJSON(res, 200, {
+        code: 0,
+        message: 'refreshed',
+        data: {
+          accessToken: accessToken,
+          tokenType: 'Bearer',
+          expiresIn: ACCESS_TTL
+        }
+      });
+      return;
+    }
+
     if (pathname === '/example/mock/me') {
-      const authorization = req.headers.authorization || null;
-      const valid = authorization === 'Bearer mock-token-9f3c2a7b';
+      const result = verifyJWT(bearerFromRequest(req));
 
       const body = JSON.stringify({
-        code: valid ? 0 : 401,
-        message: valid ? 'ok' : (authorization ? 'invalid token' : 'missing token'),
+        code: result.valid ? 0 : 401,
+        message: result.valid ? 'ok' : 'invalid or expired access token',
         data: {
-          authorization: authorization,
-          injected: !!authorization,
-          valid: valid
+          valid: result.valid,
+          reason: result.reason || null,
+          claims: result.payload || null,
+          injected: !!req.headers.authorization
         }
       });
 
-      res.writeHead(valid ? 200 : 401, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.writeHead(result.valid ? 200 : 401, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(body);
       return;
     }
 
     if (pathname === '/example/mock/forbidden') {
-      res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({
+      sendJSON(res, 403, {
         code: 403,
         message: 'forbidden',
         data: { valid: false }
-      }));
+      });
       return;
     }
 

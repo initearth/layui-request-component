@@ -226,23 +226,31 @@ static/layui/exts/
 └── mock/
 ```
 
-其中 `debug.html` 是鉴权调试页面，默认开启 `debug: true`，提供以下操作：
+其中 `debug.html` 是 JWT 验证调试页面，默认开启 `debug: true`，演示完整的 JWT 验证链路：
 
-- **登录**：请求 `POST /login.json`，自动保存 Token 到 `layui.data` 并回填输入框
-- **设置错误 Token**：写入一个无效 Token，用于触发鉴权失败
-- **请求鉴权**：请求 `GET /me`，通过 `skipAuthIntercept` 跳过自动拦截，直接校验当前 Token 是否有效
-- **401 自动拦截**：设置错误 Token 后请求 `/me`；响应拦截器会清除失效 Token、自动重新登录、保存新 Token 并重试原请求，响应区同时展示原始 401 错误和重试结果
-- **403 拦截**：请求 `/forbidden`；响应拦截器记录拦截日志后抛出错误，保留当前 Token
-- **清除**：删除 `layui.data` 中的 Token，并清空输入框
+**签发与解析**
+- **登录签发**：`POST /login.json` 返回 JWT 格式的 `accessToken`（2 分钟有效）和 `refreshToken`（1 小时有效），自动保存到 `layui.data`
+- **解析 Token**：Base64URL 解码 JWT 的 Header / Payload / Signature 三段并展示
+- **状态展示**：实时显示双 Token 的状态与 `exp` 倒计时，页面每秒刷新
+- **模拟异常**：「模拟已过期」写入 `exp` 已过期的 JWT；「模拟签名错误」写入签名非法的 JWT
+- **清除**：删除 `layui.data` 中的双 Token
 
-鉴权拦截逻辑封装在 `example/http.js` 的响应拦截器中：
+**验证流程**
+- **请求鉴权**：`GET /me`，通过 `skipAuthIntercept` 跳过自动拦截，直接校验 JWT 签名与 `exp` 声明
+- **过期自动刷新**：写入已过期 JWT 后请求 `/me`；响应拦截器捕获 401，用 `refreshToken` 调用 `POST /refresh.json` 换取新 `accessToken`，再重试原请求，响应区同时展示原始 401 错误与刷新后的结果
+- **手动刷新**：直接请求 `/refresh.json` 换取新 `accessToken`
+- **403 拦截**：请求 `/forbidden`，记录日志后抛出错误，保留 Token
 
-- `401`：清除 Token → 重新登录 → 保存新 Token → 重试一次原请求，通过 `_authRetried` 防止无限重试，并在 config 上保留 `_originalError` 供页面展示
+鉴权逻辑封装在 `example/http.js` 中：
+
+- `parseJWT(token)` / `tokenStatus(token)`：解析 JWT 三段结构，判断 `exp` 是否过期
+- `setToken` / `getToken` / `setRefreshToken` / `getRefreshToken` / `clearAuth`：双 Token 管理
+- `401`：有 `refreshToken` 时 → 调用 `/refresh.json` → 保存新 `accessToken` → 重试原请求；无 `refreshToken` 或刷新失败时清除双 Token，通过 `_jwtRetried` 防止无限重试，config 上保留 `_originalError`
 - `403`：记录日志 → 抛出错误，不清除 Token、不做自动重试
-- `skipAuthIntercept`：单次请求配置，设为 `true` 可跳过上述 401 / 403 自动拦截
-- 登录接口 `/login.json` 不注入 `Authorization`，避免携带旧 Token
+- `skipAuthIntercept`：单次请求配置，设为 `true` 可跳过自动拦截
+- 登录/刷新接口不注入 `Authorization`，避免携带旧 Token
 
-页面只保留 Token 只读输入框、鉴权操作按钮、响应结果和调试日志，不再提供请求地址、方法、超时、参数等手动配置项。
+mock 服务的 JWT 逻辑抽离在 `scripts/jwt.mjs`（`signJWT` / `verifyJWT` / `bearerOf`），使用 `node:crypto` 的 HMAC-SHA256 签名验签，签发含 `sub`、`name`、`role`、`iss`、`scope`、`iat`、`exp` 等声明。`scripts/serve.mjs` 负责接口路由，`example/mock/login.json` 为静态示例数据。
 
 本地调试时执行：
 

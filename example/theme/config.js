@@ -9,6 +9,8 @@ window.APP_CONFIG = {
   auth: {
     table: 'auth',
     key: 'Authorization',
-    prefix: 'Bearer '
+    prefix: 'Bearer ',
+    accessKey: 'AccessToken',
+    refreshKey: 'RefreshToken'
   }
 };

@@ -143,7 +143,184 @@ body {
   flex-wrap: wrap;
 }
 
+.guide-panel { border-left: 3px solid var(--primary); }
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.guide-block h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.guide-steps,
+.guide-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #46536b;
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+.guide-steps li,
+.guide-list li { margin-bottom: 3px; }
+
+.guide-steps b { color: var(--primary-dark); }
+
+.guide-steps code,
+.guide-list code,
+.guide-note code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--primary-dark);
+  background: rgba(91, 115, 255, 0.09);
+}
+
+.guide-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(91, 115, 255, 0.05);
+  color: #46536b;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.guide-note strong { color: var(--text); }
+
 .auth-actions { margin-top: 12px; }
+
+.actions { margin-top: 18px; }
+
+.countdown {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(113, 128, 150, 0.1);
+}
+
+.countdown[data-state="valid"] { color: var(--success); background: rgba(22, 163, 123, 0.12); }
+.countdown[data-state="expired"] { color: var(--danger); background: rgba(239, 91, 107, 0.12); }
+
+.token-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.token-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.token-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.token-name { font-size: 12px; font-weight: 700; color: #46536b; }
+
+.token-state {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(113, 128, 150, 0.1);
+}
+
+.token-state[data-state="valid"] { color: var(--success); background: rgba(22, 163, 123, 0.12); }
+.token-state[data-state="expired"] { color: var(--danger); background: rgba(239, 91, 107, 0.12); }
+.token-state[data-state="invalid"] { color: #d97706; background: rgba(217, 119, 6, 0.12); }
+
+.token-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  word-break: break-all;
+  color: var(--text);
+  min-height: 36px;
+}
+
+.token-meta { margin-top: 8px; font-size: 11px; color: var(--muted); }
+
+.flow-actions { margin-bottom: 16px; }
+
+.flow-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: #46536b;
+  font-size: 12px;
+  line-height: 2;
+}
+
+.flow-steps code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: rgba(91, 115, 255, 0.09);
+  color: var(--primary-dark);
+}
+
+.flow-steps li { transition: color 0.2s ease; }
+
+.flow-steps li.active {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.flow-hint { font-size: 11px; color: var(--muted); }
+
+.claims-panel { margin-top: 0; }
+
+.jwt-parts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.jwt-part {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.part-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jwt-part pre {
+  margin: 0;
+  min-height: 60px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: #344055;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 
 .layui-input {
   flex: 1 1 360px;
@@ -260,4 +437,9 @@ body {
 @media (max-width: 900px) {
   .result-grid { grid-template-columns: 1fr; }
   .topbar { align-items: flex-start; flex-direction: column; }
+  .token-grid, .jwt-parts, .guide-grid { grid-template-columns: 1fr; }
 }
+
+.pill[data-state="valid"] { color: var(--success); background: rgba(22, 163, 123, 0.12); }
+.pill[data-state="expired"],
+.pill[data-state="invalid"] { color: var(--danger); background: rgba(239, 91, 107, 0.12); }
