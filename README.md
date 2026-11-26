@@ -230,15 +230,17 @@ static/layui/exts/
 
 - **登录**：请求 `POST /login.json`，自动保存 Token 到 `layui.data` 并回填输入框
 - **设置错误 Token**：写入一个无效 Token，用于触发鉴权失败
-- **请求鉴权**：请求 `GET /me`，校验当前 Token 是否有效
-- **401 自动拦截**：设置错误 Token 后请求 `/me`；响应拦截器会清除失效 Token、自动重新登录、保存新 Token 并重试原请求
-- **403 拦截**：请求 `/forbidden`；响应拦截器会清除 Token 并终止请求
+- **请求鉴权**：请求 `GET /me`，通过 `skipAuthIntercept` 跳过自动拦截，直接校验当前 Token 是否有效
+- **401 自动拦截**：设置错误 Token 后请求 `/me`；响应拦截器会清除失效 Token、自动重新登录、保存新 Token 并重试原请求，响应区同时展示原始 401 错误和重试结果
+- **403 拦截**：请求 `/forbidden`；响应拦截器记录拦截日志后抛出错误，保留当前 Token
 - **清除**：删除 `layui.data` 中的 Token，并清空输入框
 
 鉴权拦截逻辑封装在 `example/http.js` 的响应拦截器中：
 
-- `401`：清除 Token → 重新登录 → 保存新 Token → 重试一次原请求，通过 `_authRetried` 防止无限重试
-- `403`：清除 Token → 抛出错误，不做自动重试
+- `401`：清除 Token → 重新登录 → 保存新 Token → 重试一次原请求，通过 `_authRetried` 防止无限重试，并在 config 上保留 `_originalError` 供页面展示
+- `403`：记录日志 → 抛出错误，不清除 Token、不做自动重试
+- `skipAuthIntercept`：单次请求配置，设为 `true` 可跳过上述 401 / 403 自动拦截
+- 登录接口 `/login.json` 不注入 `Authorization`，避免携带旧 Token
 
 页面只保留 Token 只读输入框、鉴权操作按钮、响应结果和调试日志，不再提供请求地址、方法、超时、参数等手动配置项。
 

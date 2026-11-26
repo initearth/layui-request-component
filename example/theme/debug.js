@@ -124,7 +124,7 @@ layui.config({
   });
 
   $('#btn-auth').on('click', function () {
-    request(function () { return http.checkAuth(); }, function (response) {
+    request(function () { return http.checkAuth({ skipAuthIntercept: true }); }, function (response) {
       var payload = responseData(response);
       var valid = !!(payload && payload.valid);
 
@@ -140,6 +140,18 @@ layui.config({
     request(function () { return http.checkAuth(); }, function (response) {
       var payload = responseData(response);
       var valid = !!(payload && payload.valid);
+      var original = response.config && response.config._originalError;
+
+      if (original) {
+        showResponse({
+          original: {
+            statusCode: original.statusCode,
+            code: original.code,
+            message: original.message
+          },
+          retried: response
+        });
+      }
 
       layer.msg(
         valid ? '401 已自动拦截，重新登录并重试成功' : '鉴权未通过',

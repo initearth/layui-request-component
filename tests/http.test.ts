@@ -132,4 +132,71 @@ describe('example http wrapper', function () {
     requestStub.onRequest(cleared);
     expect(cleared.header.Authorization).toBeUndefined();
   });
+
+  it('登录请求不应注入 Authorization', function () {
+    const http = (globalThis as any).layui.http;
+
+    http.setToken('abc');
+    const config: any = { url: '/login.json', header: {} };
+    requestStub.onRequest(config);
+    expect(config.header.Authorization).toBeUndefined();
+
+    http.removeToken();
+  });
+
+  it('skipAuthIntercept 应跳过 401 自动拦截', function () {
+    const http = (globalThis as any).layui.http;
+    const error: any = {
+      response: { statusCode: 401, data: { code: 401 } },
+      config: { url: '/me', skipAuthIntercept: true }
+    };
+
+    http.setToken('invalid');
+    expect(function () { requestStub.onResponseError(error); }).toThrow(error);
+    expect(http.getToken()).toBe('Bearer invalid');
+
+    http.removeToken();
+  });
+
+  it('403 拦截不应清除 Token', function () {
+    const http = (globalThis as any).layui.http;
+    const error: any = {
+      response: { statusCode: 403, data: { code: 403 } },
+      config: { url: '/forbidden' }
+    };
+
+    http.setToken('abc');
+    expect(function () { requestStub.onResponseError(error); }).toThrow(error);
+    expect(http.getToken()).toBe('Bearer abc');
+
+    http.removeToken();
+  });
+
+  it('401 拦截应保存原始错误并重新登录重试', async function () {
+    const http = (globalThis as any).layui.http;
+    const originalRequest = http.request;
+    const retriedResponse: any = { statusCode: 200, data: { data: { valid: true } } };
+
+    http.request = function (config: any) {
+      if (config.url === '/login.json') {
+        return Promise.resolve({ data: { data: { token: 'new-token' } } });
+      }
+      retriedResponse.config = config;
+      return Promise.resolve(retriedResponse);
+    };
+
+    const originalError: any = {
+      response: { statusCode: 401, data: { code: 401 } },
+      config: { url: '/me' }
+    };
+
+    const response = await requestStub.onResponseError(originalError);
+    expect(response).toBe(retriedResponse);
+    expect(http.getToken()).toBe('Bearer new-token');
+    expect(retriedResponse.config._originalError).toBe(originalError);
+    expect(retriedResponse.config._authRetried).toBe(true);
+
+    http.request = originalRequest;
+    http.removeToken();
+  });
 });

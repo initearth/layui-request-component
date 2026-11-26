@@ -61,18 +61,25 @@ layui.define(['request', 'appConfig'], function (exports) {
     });
   };
 
-  http.checkAuth = function () {
-    return http.request({ method: 'GET', url: '/me' });
+  http.checkAuth = function (config) {
+    return http.request(layui.$.extend({ method: 'GET', url: '/me' }, config || {}));
   };
 
-  http.checkForbidden = function () {
-    return http.request({ method: 'GET', url: '/forbidden' });
+  http.checkForbidden = function (config) {
+    return http.request(layui.$.extend({ method: 'GET', url: '/forbidden' }, config || {}));
   };
 
   http.interceptors.request.use(function (config) {
     var token = getToken();
+    var url = config.url || '';
 
     config.header = config.header || {};
+
+    if (url.indexOf('/login.json') > -1) {
+      delete config.header[key];
+      delete config.header[key.toLowerCase()];
+      return config;
+    }
 
     if (token) {
       config.header[key] = token;
@@ -93,7 +100,7 @@ layui.define(['request', 'appConfig'], function (exports) {
     var config = error.config || {};
     var url = config.url || '';
 
-    if (url.indexOf('/login.json') > -1) {
+    if (url.indexOf('/login.json') > -1 || config.skipAuthIntercept) {
       throw error;
     }
 
@@ -104,13 +111,13 @@ layui.define(['request', 'appConfig'], function (exports) {
         code: code
       });
 
-      removeToken();
-
       if (config._authRetried) {
         throw error;
       }
 
+      removeToken();
       config._authRetried = true;
+      config._originalError = error;
 
       return http.login().then(function (response) {
         var payload = payloadOf(response);
@@ -126,7 +133,6 @@ layui.define(['request', 'appConfig'], function (exports) {
         code: code
       });
 
-      removeToken();
       throw error;
     }
 
