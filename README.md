@@ -1,8 +1,8 @@
 # @initearth/layui-request-component
 
-基于 [luch-request v4](https://github.com/lei-mu/luch-request) API 设计的 layui `component` 浏览器请求组件。组件遵循 [layui component 构建器](https://layui.dev/docs/2/component/) 规范，使用 `layui.define` / `layui.component` 定义并导出为 `layui.request`。
+基于 layui `component` 构建的浏览器 HTTP 请求组件。组件遵循 [layui component 构建器](https://layui.dev/docs/2/component/) 规范，使用 `layui.define` / `layui.component` 定义并导出为 `layui.request`。
 
-> luch-request v4 是面向 uni-app 的 TypeScript/ESM 请求库，浏览器无法直接加载。本组件在浏览器中用 `XMLHttpRequest` 实现其 API 与行为，不依赖 `uni`；上传使用 `FormData`，下载使用 `Blob`。
+> 组件在浏览器中基于 `XMLHttpRequest` 实现，上传使用 `FormData`，下载使用 `Blob`。
 
 ## 安装
 
@@ -93,8 +93,26 @@ var http = request.render(defaults);
 | `nativeOptions` | 透传到原生 `XMLHttpRequest` 的浏览器专有字段，如 `xhrFields` |
 | `luchMeta` | 业务元数据，不发送到服务端 |
 | `luchOptions.jsonParsing` | 响应 JSON 解析：`{ mode: 'auto'\|'strict', include: ['upload'] }` 或 `false` |
+| `debug` | 是否输出调试日志，默认 `false` |
 
 配置优先级：内置默认值 → `request.set()` 全局配置 → 实例默认配置 → 单次请求配置。`header` 按名称大小写不敏感合并，`params`、`data`、`formData`、`files` 等整体覆盖。
+
+### 调试模式
+
+```js
+var http = request.create({
+  debug: true,
+  baseURL: '/api'
+});
+```
+
+也可以全局开启：
+
+```js
+request.set({ debug: true });
+```
+
+开启后会在控制台输出 `request`、`response`、`error`、`abort` 四类日志。`Authorization`、`Token`、`Cookie` 等敏感请求头会自动显示为 `***`。
 
 ### 拦截器
 
@@ -186,11 +204,12 @@ var http = request.render({ id: 'my-http', elem: '#app', baseURL: '/api' });
 
 ## 封装为全局 http 模块
 
-npm 包中提供了两个可直接复制的模板：
+npm 包中提供了可直接复制的模板：
 
 ```text
 node_modules/@initearth/layui-request-component/example/appConfig.js
 node_modules/@initearth/layui-request-component/example/http.js
+node_modules/@initearth/layui-request-component/example/debug.html
 ```
 
 将它们和 `dist/request.js` 一起放到 layui 扩展目录，并保持文件名不变：
@@ -199,8 +218,27 @@ node_modules/@initearth/layui-request-component/example/http.js
 static/layui/exts/
 ├── request.js
 ├── appConfig.js
-└── http.js
+├── http.js
+└── debug.html
 ```
+
+其中 `debug.html` 是可视化调试页面，默认开启 `debug: true`。本地调试时执行：
+
+```bash
+npm run watch
+```
+
+然后访问 `http://localhost:5173/example/debug.html`，页面会直接加载 `../dist/request.js`。
+
+`watch` 模式会监听 `src/`、`example/` 和构建配置：
+
+- 修改 `src/**/*.ts` 或构建配置：自动重新构建并刷新浏览器
+- 修改 `example/**` 下的 HTML/JS：直接刷新浏览器
+- 页面通过 Server-Sent Events 接收刷新指令，无需手动刷新
+
+如果只需要静态预览而不自动重建，可使用 `npm run dev`。部署到业务项目时，请将 `dist/request.js` 也复制到同一扩展目录。
+
+页面支持配置请求地址、Token、Query 参数、请求头和请求体，并可查看响应结果、取消请求和调试日志。
 
 页面中统一使用：
 
@@ -250,7 +288,7 @@ layui.config({
 ```text
 src/           TypeScript 源码（常量、错误、工具、拦截器、客户端、模块入口）
 tests/         Vitest 测试
-example/       appConfig.js 与 http.js 封装模板
+example/       appConfig.js、http.js 与 debug.html 调试模板
 scripts/       构建辅助脚本
 dist/          构建产物（request.js 与 .d.ts，发布时生成）
 rollup.config.mjs
@@ -265,9 +303,13 @@ npm install
 npm run typecheck
 npm test
 npm run build
+npm run dev
+npm run watch
 npm run check
 ```
 
+- `npm run dev`：启动本地静态服务器，访问 `example/debug.html`
+- `npm run watch`：自动重建并刷新浏览器，用于实时调试
 - `npm run typecheck`：TypeScript 类型检查
 - `npm test`：Vitest 运行测试
 - `npm run build`：Rollup 打包浏览器脚本并生成类型声明

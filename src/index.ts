@@ -34,6 +34,7 @@ layuiGlobal.define(['component', 'jquery'], function (exportModule: any) {
       timeout: 0,
       responseType: '',
       withCredentials: false,
+      debug: false,
       validateStatus: function (status: number) {
         return status >= 200 && status < 300;
       },

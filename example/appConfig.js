@@ -8,6 +8,7 @@ layui.define(function (exports) {
     : {};
 
   var defaults = {
+    debug: false,
     api: {
       baseURL: 'https://api.example.com',
       timeout: 10000

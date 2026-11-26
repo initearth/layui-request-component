@@ -39,7 +39,8 @@ layui.define(['request', 'appConfig'], function (exports) {
 
   var http = request.create({
     baseURL: api.baseURL || '',
-    timeout: api.timeout || 0
+    timeout: api.timeout || 0,
+    debug: appConfig.debug === true
   });
 
   http.interceptors.request.use(function (config) {

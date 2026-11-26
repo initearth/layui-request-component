@@ -13,6 +13,35 @@ import {
 
 type Emit = (owner: any, config: any, name: string, data: any) => any;
 
+const SENSITIVE_HEADER = /authorization|token|cookie|set-cookie/i;
+
+function maskHeaders(headers: any): Record<string, any> {
+  const output: Record<string, any> = {};
+
+  $.each(headers || {}, function (key: string, value: any) {
+    output[key] = SENSITIVE_HEADER.test(key) ? '***' : value;
+  });
+
+  return output;
+}
+
+function debugLog(
+  config: any,
+  type: 'request' | 'response' | 'error' | 'abort',
+  payload: any
+): void {
+  if (!config || !config.debug || typeof console === 'undefined') return;
+
+  const prefix = '[layui-request] ' + type;
+
+  if (type === 'error' && typeof console.error === 'function') {
+    console.error(prefix, payload);
+    return;
+  }
+
+  if (typeof console.log === 'function') console.log(prefix, payload);
+}
+
 function canceledError(context: any, reason?: any): LuchRequestError {
   return new LuchRequestError(reason ? String(reason) : '请求已取消', ERROR.ERR_CANCELED, {
     config: context.config,
@@ -378,6 +407,14 @@ export function executeRequest(
       } catch (e) {}
     }
 
+    debugLog(context.config, 'abort', {
+      id: context.config && context.config.id,
+      operation: operation,
+      reason: reason,
+      cancelMode: mode,
+      url: context.config && (context.config.fullURL || context.config.url)
+    });
+
     if (typeof context.removeSignal === 'function') context.removeSignal();
     if (typeof context.cleanupPending === 'function') context.cleanupPending();
 
@@ -463,12 +500,31 @@ export function executeRequest(
         finalConfig.paramsSerializer
       );
 
+      debugLog(finalConfig, 'request', {
+        id: finalConfig.id,
+        operation: operation,
+        method: operation === 'request' ? finalConfig.method : 'POST',
+        url: finalConfig.url,
+        fullURL: finalConfig.fullURL,
+        header: maskHeaders(finalConfig.header),
+        params: finalConfig.params,
+        data: finalConfig.data
+      });
+
       return dispatch(finalConfig, context, operation).then(function (response) {
         return runInterceptorChain(client.interceptors.response, response, context, false);
       });
     })
     .then(function (response) {
       if (context.canceled) return;
+
+      debugLog(context.config, 'response', {
+        id: context.config && context.config.id,
+        operation: operation,
+        statusCode: response && response.statusCode,
+        fullURL: context.config && context.config.fullURL,
+        data: response && response.data
+      });
 
       context.cleanupPending();
       if (typeof context.removeSignal === 'function') context.removeSignal();
@@ -481,6 +537,22 @@ export function executeRequest(
       if (context.canceled) return;
 
       const normalized = normalizeError(error, context);
+
+      debugLog(context.config, 'error', {
+        id: context.config && context.config.id,
+        operation: operation,
+        code: normalized.code,
+        message: normalized.message,
+        statusCode: normalized.statusCode,
+        fullURL: context.config && context.config.fullURL,
+        response: normalized.response
+          ? {
+            statusCode: normalized.response.statusCode,
+            header: maskHeaders(normalized.response.header)
+          }
+          : undefined
+      });
+
       emit(owner, context.config, 'error', normalized);
       rejectOuter!(normalized);
     });

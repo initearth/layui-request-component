@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>layui request 调试页面</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.13.9/dist/css/layui.css">
+  <style>
+    body { background: #f2f3f5; padding: 15px; }
+    .debug-card { margin-bottom: 15px; }
+    .layui-form-label { width: 95px; }
+    .layui-input-block { margin-left: 125px; }
+    .code-box {
+      background: #f6f6f6;
+      border: 1px solid #e6e6e6;
+      border-radius: 2px;
+      min-height: 160px;
+      max-height: 360px;
+      overflow: auto;
+      padding: 10px;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 12px;
+    }
+    .console-line { line-height: 22px; border-bottom: 1px dashed #eee; }
+    .console-line.error { color: #d9534f; }
+    .console-line.log { color: #333; }
+    .tip { color: #999; font-size: 12px; }
+  </style>
+  <script>
+    window.APP_CONFIG = {
+      debug: true,
+      api: {
+        baseURL: 'https://api.example.com',
+        timeout: 10000
+      },
+      auth: {
+        table: 'auth',
+        key: 'Authorization',
+        prefix: 'Bearer '
+      }
+    };
+  </script>
+</head>
+<body>
+<div class="layui-fluid">
+  <div class="layui-card debug-card">
+    <div class="layui-card-header">
+      layui request 调试页面
+      <span class="tip">本地调试请先执行 npm run build，然后通过静态服务器访问本页面</span>
+    </div>
+    <div class="layui-card-body">
+      <form class="layui-form" lay-filter="debug-form">
+        <div class="layui-form-item">
+          <label class="layui-form-label">Base URL</label>
+          <div class="layui-input-block">
+            <input type="text" id="base-url" class="layui-input" value="https://api.example.com">
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">Token</label>
+          <div class="layui-input-block">
+            <div class="layui-input-group">
+              <input type="text" id="token" class="layui-input" placeholder="留空表示不注入 Authorization">
+              <div class="layui-input-split layui-input-prefix-addon">
+                <button type="button" class="layui-btn layui-btn-sm" id="btn-save-token">保存</button>
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="btn-clear-token">清除</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">请求</label>
+          <div class="layui-input-block">
+            <div class="layui-input-group">
+              <select id="method" class="layui-select" style="width: 120px;">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+                <option value="HEAD">HEAD</option>
+                <option value="OPTIONS">OPTIONS</option>
+              </select>
+              <input type="text" id="url" class="layui-input" value="/users" placeholder="/users">
+              <input type="number" id="timeout" class="layui-input" style="width: 120px;" value="10000" placeholder="超时 ms">
+              <div class="layui-input-prefix-addon">
+                <button type="button" class="layui-btn" id="btn-request">发送请求</button>
+                <button type="button" class="layui-btn layui-btn-danger" id="btn-abort">取消请求</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="layui-row layui-col-space10">
+          <div class="layui-col-md4">
+            <label>Query 参数（JSON 对象）</label>
+            <textarea id="params" class="layui-textarea" rows="8">{"page": 1}</textarea>
+          </div>
+          <div class="layui-col-md4">
+            <label>请求头（JSON 对象）</label>
+            <textarea id="headers" class="layui-textarea" rows="8">{"Accept": "application/json"}</textarea>
+          </div>
+          <div class="layui-col-md4">
+            <label>请求体（JSON 对象）</label>
+            <textarea id="data" class="layui-textarea" rows="8">{"name": "Ada"}</textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="layui-row layui-col-space15">
+    <div class="layui-col-md7">
+      <div class="layui-card debug-card">
+        <div class="layui-card-header">
+          响应结果 <span id="status" class="tip">状态 -</span>
+        </div>
+        <div class="layui-card-body">
+          <pre class="code-box" id="response">尚未发送请求</pre>
+        </div>
+      </div>
+    </div>
+    <div class="layui-col-md5">
+      <div class="layui-card debug-card">
+        <div class="layui-card-header">
+          调试日志
+          <button type="button" class="layui-btn layui-btn-xs layui-btn-primary" id="btn-clear-console" style="float: right;">清空</button>
+        </div>
+        <div class="layui-card-body">
+          <div class="code-box" id="console"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/layui@2.13.9/dist/layui.js"></script>
+<script src="../dist/request.js"></script>
+<script>
+  layui.config({
+    base: './'
+  }).use(['http', 'form', 'layer'], function () {
+    var $ = layui.$;
+    var layer = layui.layer;
+    var form = layui.form;
+    var http = layui.http;
+    var currentRequest = null;
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function safeStringify(value) {
+      var seen = [];
+
+      return JSON.stringify(value, function (key, item) {
+        if (key === 'task' || key === 'elem' || key === 'xhr') return undefined;
+        if (item && typeof item === 'object') {
+          if (seen.indexOf(item) !== -1) return '[Circular]';
+          seen.push(item);
+        }
+        return item;
+      }, 2);
+    }
+
+    function formatArg(arg) {
+      if (typeof arg === 'string') return arg;
+      try {
+        return safeStringify(arg);
+      } catch (e) {
+        return String(arg);
+      }
+    }
+
+    function appendConsole(type, text) {
+      $('#console').append(
+        '<div class="console-line ' + type + '">' + escapeHtml(text) + '</div>'
+      );
+      var box = $('#console')[0];
+      box.scrollTop = box.scrollHeight;
+    }
+
+    ['log', 'error'].forEach(function (type) {
+      var original = console[type];
+      console[type] = function () {
+        var text = Array.prototype.map.call(arguments, formatArg).join(' ');
+        if (text.indexOf('[layui-request]') > -1) appendConsole(type, text);
+        return original.apply(console, arguments);
+      };
+    });
+
+    function parseObject(text, name) {
+      if (!text || !text.replace(/\s/g, '')) return {};
+
+      try {
+        var value = JSON.parse(text);
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+          throw new Error('必须是 JSON 对象');
+        }
+        return value;
+      } catch (e) {
+        layer.msg(name + ' 解析失败：' + e.message, { icon: 2 });
+        return null;
+      }
+    }
+
+    form.render();
+    $('#token').val(http.getToken() || '');
+
+    $('#btn-save-token').on('click', function () {
+      var token = $('#token').val().trim();
+      if (!token) {
+        layer.msg('请输入 Token', { icon: 5 });
+        return;
+      }
+      http.setToken(token);
+      layer.msg('Token 已保存，后续请求会自动注入', { icon: 1 });
+    });
+
+    $('#btn-clear-token').on('click', function () {
+      http.removeToken();
+      $('#token').val('');
+      layer.msg('Token 已清除', { icon: 1 });
+    });
+
+    $('#btn-clear-console').on('click', function () {
+      $('#console').empty();
+    });
+
+    $('#btn-request').on('click', function () {
+      var method = $('#method').val();
+      var url = $('#url').val().trim();
+      if (!url) {
+        layer.msg('请输入请求地址', { icon: 5 });
+        return;
+      }
+
+      var params = parseObject($('#params').val(), 'Query 参数');
+      if (params === null) return;
+
+      var headers = parseObject($('#headers').val(), '请求头');
+      if (headers === null) return;
+
+      var dataText = $('#data').val();
+      var data;
+      if (dataText && dataText.replace(/\s/g, '')) {
+        data = parseObject(dataText, '请求体');
+        if (data === null) return;
+      }
+
+      http.setConfig({
+        baseURL: $('#base-url').val().trim(),
+        timeout: parseInt($('#timeout').val(), 10) || 0
+      });
+
+      var config = {
+        method: method,
+        url: url,
+        params: params,
+        header: headers
+      };
+      if (data !== undefined) config.data = data;
+
+      $('#status').text('状态 请求中');
+      $('#response').text('请求中...');
+
+      currentRequest = http.request(config);
+
+      currentRequest.then(function (response) {
+        $('#status').text('状态 ' + response.statusCode);
+        $('#response').text(safeStringify(response));
+        layer.msg('请求完成', { icon: 1 });
+      }).catch(function (error) {
+        $('#status').text('状态 ' + (error.statusCode || error.code));
+        $('#response').text(safeStringify(error.toJSON ? error.toJSON() : error));
+        layer.msg('请求失败：' + error.code, { icon: 2 });
+      });
+    });
+
+    $('#btn-abort').on('click', function () {
+      if (!currentRequest) {
+        layer.msg('当前没有进行中的请求', { icon: 5 });
+        return;
+      }
+      currentRequest.abort('调试页面手动取消');
+    });
+  });
+</script>
+</body>
+</html>

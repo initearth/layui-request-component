@@ -367,4 +367,46 @@ describe('layui request component', function () {
     xhr.respond(200, '{}');
     await reloadPromise;
   });
+
+  it('debug 模式应输出日志并遮蔽敏感请求头', async function () {
+    const layui = (globalThis as any).layui;
+    const logs: any[][] = [];
+    const originalLog = console.log;
+    console.log = function (...args: any[]) {
+      logs.push(args);
+    };
+
+    try {
+      const debugHttp = layui.request.create({
+        id: 'debug-test',
+        baseURL: 'https://debug.test',
+        debug: true,
+        header: {
+          Authorization: 'Bearer secret',
+          'X-Plain': 'visible'
+        }
+      });
+
+      const debugPromise = debugHttp.get('/users');
+      await tick();
+
+      const requestLog = logs.find(function (args) {
+        return String(args[0]).indexOf('[layui-request] request') === 0;
+      });
+      expect(requestLog).toBeTruthy();
+      expect(requestLog![1].header.Authorization).toBe('***');
+      expect(requestLog![1].header['X-Plain']).toBe('visible');
+
+      lastXHR().respond(200, '{"ok":true}');
+      await debugPromise;
+
+      const responseLog = logs.find(function (args) {
+        return String(args[0]).indexOf('[layui-request] response') === 0;
+      });
+      expect(responseLog).toBeTruthy();
+      expect(responseLog![1].statusCode).toBe(200);
+    } finally {
+      console.log = originalLog;
+    }
+  });
 });

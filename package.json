@@ -1,7 +1,7 @@
 {
   "name": "@initearth/layui-request-component",
   "version": "1.0.0",
-  "description": "luch-request style HTTP client built as a layui component for browsers",
+  "description": "HTTP request component for layui with interceptors, cancellation, upload and download",
   "license": "MIT",
   "main": "dist/request.js",
   "types": "dist/index.d.ts",
@@ -26,6 +26,8 @@
     "typecheck": "tsc --project tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "dev": "node ./scripts/serve.mjs",
+    "watch": "node ./scripts/watch.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "prepublishOnly": "npm run check",
     "publish:dry-run": "npm run check && npm pack --dry-run"
@@ -35,7 +37,7 @@
     "component",
     "request",
     "http",
-    "luch-request"
+    "xhr"
   ],
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",

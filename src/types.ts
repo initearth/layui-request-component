@@ -25,6 +25,7 @@ export interface LuchRequestConfig<D = any, P = any> {
   timeout?: number;
   responseType?: string;
   withCredentials?: boolean;
+  debug?: boolean;
   validateStatus?: (status: number) => boolean;
   signal?: any;
   onTask?: (task: any, control: { abort(reason?: unknown): void }) => void;
